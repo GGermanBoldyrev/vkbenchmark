@@ -47,13 +47,19 @@ public sealed class PcInfoCollector
                     0, GpuPreference.HighPerformance))
                 {
                     AdapterDescription1 description = adapter.Description1;
-                    string name = description.Description;
+
+                    // Программный адаптер Windows — не видеокарта: настоящей в системе нет.
+                    if (description.Flags.HasFlag(AdapterFlags.Software))
+                    {
+                        return new GpuInfo(Name: null, VramMb: null, DriverVersion: null);
+                    }
+
                     long vramBytes = (long)description.DedicatedVideoMemory;
 
                     return new GpuInfo(
-                        Name: name,
+                        Name: description.Description,
                         VramMb: (int)(vramBytes / BytesInMegabyte),
-                        DriverVersion: FindDriverVersion(name));
+                        DriverVersion: FindDriverVersion(description.VendorId, description.DeviceId));
                 }
             }
         }
@@ -63,14 +69,20 @@ public sealed class PcInfoCollector
         }
     }
     
-    private static string? FindDriverVersion(string gpuName)
+    // Версии драйвера в DXGI нет, поэтому берём её из WMI. Карту находим по кодам
+    // производителя и модели: они есть в обоих источниках и не зависят от написания названия.
+    private static string? FindDriverVersion(uint vendorId, uint deviceId)
     {
         try
         {
+            string hardwareId = $"VEN_{vendorId:X4}&DEV_{deviceId:X4}";
+
             foreach (Dictionary<string, object?> row in Query(
-                "SELECT Name, DriverVersion FROM Win32_VideoController"))
+                "SELECT PNPDeviceID, DriverVersion FROM Win32_VideoController"))
             {
-                if (ReadText(row, "Name") == gpuName)
+                string? deviceInstance = ReadText(row, "PNPDeviceID");
+                if (deviceInstance is not null
+                    && deviceInstance.Contains(hardwareId, StringComparison.OrdinalIgnoreCase))
                 {
                     return ReadText(row, "DriverVersion");
                 }
@@ -83,7 +95,7 @@ public sealed class PcInfoCollector
             return null;
         }
     }
-    
+
     private static RamInfo CollectRam()
     {
         try
