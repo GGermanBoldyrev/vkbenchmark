@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using Spectre.Console.Cli;
 using WukongBench.Exceptions;
+using WukongBench.Pc;
+using WukongBench.Pc.Info;
 using WukongBench.Tool;
 
 namespace WukongBench.Cli.Run;
@@ -17,11 +19,8 @@ public sealed class RunCommand : Command<RunSettings>
             Console.WriteLine($"Benchmark tool: {installation.InstallDir}");
             Console.WriteLine($"Settings file:  {installation.SettingsPath}");
 
-            PcInfo pc = CollectPcInfo();
-            Console.WriteLine($"CPU: {pc.Cpu}");
-            Console.WriteLine($"GPU: {pc.Gpu}");
-            Console.WriteLine($"RAM: {pc.RamGb} GB");
-            Console.WriteLine($"OS:  {pc.Os}");
+            PcInfo pc = new PcInfoCollector().Collect();
+            PrintPcInfo(pc);
 
             string backupPath = BackupSettings(installation.SettingsPath);
             Console.WriteLine($"Settings backup: {backupPath}");
@@ -34,11 +33,44 @@ public sealed class RunCommand : Command<RunSettings>
             return ExitCodes.Failure;
         }
     }
-
-    // Мок: настоящие данные возьмём у Windows.
-    private static PcInfo CollectPcInfo()
+    
+    private const string NotAvailable = "n/a";
+    
+    private static void PrintPcInfo(PcInfo pc)
     {
-        return new PcInfo("Mock CPU", "Mock GPU", 32, "Mock OS");
+        Console.WriteLine(
+            $"CPU: {Format(pc.Cpu.Name)}, cores: {Format(pc.Cpu.Cores)}, threads: {Format(pc.Cpu.Threads)}");
+
+        Console.WriteLine(
+            $"GPU: {Format(pc.Gpu.Name)}, VRAM: {FormatMemory(pc.Gpu.VramMb)}, driver: {Format(pc.Gpu.DriverVersion)}");
+
+        Console.WriteLine($"RAM: {Format(pc.Ram.TotalGb, " GB")}");
+        Console.WriteLine($"OS:  {Format(pc.Os.Name)}, build: {Format(pc.Os.Build)}");
+    }
+    
+    private static string Format(object? value, string unit = "")
+    {
+        if (value is null)
+        {
+            return NotAvailable;
+        }
+
+        return $"{value}{unit}";
+    }
+
+    private static string FormatMemory(int? megabytes)
+    {
+        if (megabytes is null)
+        {
+            return NotAvailable;
+        }
+
+        if (megabytes < 1024)
+        {
+            return $"{megabytes} MB";
+        }
+
+        return $"{Math.Round(megabytes.Value / 1024.0)} GB";
     }
 
     // Мок: файл не копируется, возвращается только путь будущей копии.
