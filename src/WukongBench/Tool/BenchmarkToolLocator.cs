@@ -1,45 +1,67 @@
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
+using WukongBench.Exceptions;
 
-namespace WukongBench;
+namespace WukongBench.Tool;
 
 // Отвечает на один вопрос: где на этой машине установлен Benchmark Tool.
 public sealed class BenchmarkToolLocator
 {
-    public const string AppId = "3132990";
-
     private const string DefaultSteamDir = @"C:\Program Files (x86)\Steam";
-
-    // Путь, заданный вручную, важнее автопоиска: если он неверный, Steam не обыскиваем,
-    // чтобы молча не подставить другую установку.
-    public BenchmarkTool? Find(string? toolDir = null)
+    
+    public BenchmarkToolInstallation Find(string? toolDir = null)
     {
-        if (toolDir is not null)
-        {
-            if (!Directory.Exists(toolDir))
-            {
-                return null;
-            }
+        string installDir = toolDir ?? FindInstallDirViaSteam();
 
-            return ToBenchmarkTool(toolDir);
-        }
-
-        string? steamDir = FindSteamDir();
-        if (steamDir is null)
-        {
-            return null;
-        }
-
-        return FindInSteam(steamDir);
+        return ToInstallation(installDir);
     }
+    
+    private string FindInstallDirViaSteam()
+    {
+        string steamDir = FindSteamDir();
 
-    // Не зависит от ОС: только читает текстовые файлы Steam в указанной папке.
-    public BenchmarkTool? FindInSteam(string steamDir)
+        string? installDir = FindInSteam(steamDir);
+        if (installDir is null)
+        {
+            throw new BenchmarkException(
+                $"Benchmark Tool is not installed. Install it via Steam (AppID {BenchmarkTool.AppId}).");
+        }
+
+        return installDir;
+    }
+    
+    private static string FindSteamDir()
+    {
+        // Steam записывает свою папку в реестр: для пользователя и для всей машины.
+        string?[] fromRegistry =
+        [
+            Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null) as string,
+            Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null) as string,
+        ];
+
+        foreach (string? dir in fromRegistry)
+        {
+            if (dir is not null && Directory.Exists(dir))
+            {
+                return dir;
+            }
+        }
+
+        // Запасной вариант: папка, куда Steam ставится по умолчанию.
+        if (Directory.Exists(DefaultSteamDir))
+        {
+            return DefaultSteamDir;
+        }
+
+        throw new BenchmarkException("Steam installation not found.");
+    }
+    
+    public string? FindInSteam(string steamDir)
     {
         foreach (string library in ReadLibraries(steamDir))
         {
             // Манифест лежит только в той библиотеке, куда установлена утилита.
-            string manifest = Path.Combine(library, "steamapps", $"appmanifest_{AppId}.acf");
+            string manifest = Path.Combine(library, "steamapps", $"appmanifest_{BenchmarkTool.AppId}.acf");
             if (!File.Exists(manifest))
             {
                 continue;
@@ -56,38 +78,8 @@ public sealed class BenchmarkToolLocator
             string installDir = Path.Combine(library, "steamapps", "common", folderName);
             if (Directory.Exists(installDir))
             {
-                return ToBenchmarkTool(installDir);
+                return installDir;
             }
-        }
-
-        return null;
-    }
-
-    // Единственный шаг, зависящий от ОС: где установлен сам Steam.
-    private static string? FindSteamDir()
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            // Steam записывает свою папку в реестр: для пользователя и для всей машины.
-            string?[] fromRegistry =
-            [
-                Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null) as string,
-                Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null) as string,
-            ];
-
-            foreach (string? dir in fromRegistry)
-            {
-                if (dir is not null && Directory.Exists(dir))
-                {
-                    return dir;
-                }
-            }
-        }
-
-        // Запасной вариант: папка, куда Steam ставится по умолчанию.
-        if (Directory.Exists(DefaultSteamDir))
-        {
-            return DefaultSteamDir;
         }
 
         return null;
@@ -108,7 +100,7 @@ public sealed class BenchmarkToolLocator
         return libraries;
     }
 
-    // Файлы Steam (.vdf, .acf) состоят из строк вида:  "ключ"    "значение"
+    // Файлы Steam (.vdf, .acf) состоят из строк вида: "ключ" "значение"
     private static List<string> ReadValues(string file, string key)
     {
         Regex pattern = new Regex($"""^\s*"{Regex.Escape(key)}"\s+"(.*)"\s*$""", RegexOptions.IgnoreCase);
@@ -127,10 +119,14 @@ public sealed class BenchmarkToolLocator
         return values;
     }
 
-    private static BenchmarkTool ToBenchmarkTool(string installDir)
+    // Общая проверка для обоих источников: годится ли папка как установка утилиты.
+    private static BenchmarkToolInstallation ToInstallation(string installDir)
     {
-        string settingsPath = Path.Combine(installDir, "b1", "Saved", "Config", "Windows", "GameUserSettings.ini");
+        if (!Directory.Exists(installDir))
+        {
+            throw new BenchmarkException($"Folder not found: {installDir}");
+        }
 
-        return new BenchmarkTool(installDir, settingsPath);
+        return new BenchmarkToolInstallation(installDir);
     }
 }
