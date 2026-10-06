@@ -2,36 +2,31 @@ using WukongBench.Exceptions;
 
 namespace WukongBench.Settings;
 
-// Резервная копия файла настроек игры: сохранить до наших правок, вернуть после.
+// Резервная копия файла настроек игры: сохранить до наших правок, возвращать перед каждым проходом и в конце.
 public sealed class SettingsBackup(string settingsPath)
 {
     private readonly string backupPath = settingsPath + ".wukongbench-backup";
     
     public void Create()
     {
+        // Копия уже есть: прошлый запуск не дошёл до конца, и в ней настоящие настройки.
+        if (File.Exists(backupPath))
+        {
+            return;
+        }
+        
+        if (!File.Exists(settingsPath))
+        {
+            throw new BenchmarkException($"Settings file not found: {settingsPath}{Environment.NewLine}");
+        }
+
         try
         {
-            // Копия уже есть: прошлый запуск не дошёл до конца, и в ней настоящие настройки.
-            if (File.Exists(backupPath))
-            {
-                return;
-            }
-
-            if (File.Exists(settingsPath))
-            {
-                File.Copy(settingsPath, backupPath);
-            }
-            else
-            {
-                // Настроек ещё нет: пустая копия служит меткой «оригинала не было».
-                Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
-                File.WriteAllBytes(backupPath, []);
-            }
+            File.Copy(settingsPath, backupPath);
         }
         catch (Exception exception)
         {
-            throw new BenchmarkException(
-                $"Cannot back up the settings file {settingsPath}: {exception.Message}");
+            throw new BenchmarkException($"Cannot back up the settings file {settingsPath}: {exception.Message}");
         }
     }
     
@@ -44,23 +39,26 @@ public sealed class SettingsBackup(string settingsPath)
                 return;
             }
 
-            if (new FileInfo(backupPath).Length == 0)
-            {
-                // Оригинала не было
-                File.Delete(settingsPath);
-            }
-            else
-            {
-                File.Copy(backupPath, settingsPath, overwrite: true);
-            }
-
-            File.Delete(backupPath);
+            File.Copy(backupPath, settingsPath, overwrite: true);
         }
         catch (Exception exception)
         {
             throw new BenchmarkException(
                 $"Cannot restore the settings file {settingsPath}: {exception.Message} " +
                 $"The original settings are kept in {backupPath}");
+        }
+    }
+    
+    public void Delete()
+    {
+        try
+        {
+            File.Delete(backupPath);
+        }
+        catch (Exception exception)
+        {
+            throw new BenchmarkException(
+                $"Cannot delete the settings backup {backupPath}: {exception.Message}");
         }
     }
 }

@@ -4,6 +4,7 @@ using WukongBench.Exceptions;
 using WukongBench.Pc;
 using WukongBench.Pc.Info;
 using WukongBench.Settings;
+using WukongBench.Settings.Profiles;
 using WukongBench.Tool;
 
 namespace WukongBench.Cli.Run;
@@ -12,6 +13,10 @@ namespace WukongBench.Cli.Run;
 [Description("Runs Black Myth: Wukong Benchmark Tool several times with different settings and prints the results.")]
 public sealed class RunCommand : Command<RunSettings>
 {
+    private const string NotAvailable = "n/a";
+    
+    private static readonly string DefaultProfilesDir = Path.Combine("Settings", "Profiles", "Default");
+
     public override int Execute(CommandContext context, RunSettings settings, CancellationToken cancellationToken)
     {
         try
@@ -23,18 +28,31 @@ public sealed class RunCommand : Command<RunSettings>
             PcInfo pc = new PcInfoCollector().Collect();
             PrintPcInfo(pc);
 
+            string profilesDir = settings.ProfilesDir
+                ?? Path.Combine(AppContext.BaseDirectory, DefaultProfilesDir);
+            IReadOnlyList<BenchmarkProfile> profiles = new ProfileLoader().LoadAll(profilesDir);
+            Console.WriteLine($"Profiles: {string.Join(", ", profiles.Select(profile => profile.Name))}");
+
+            SettingsFile settingsFile = new SettingsFile(installation.SettingsPath);
             SettingsBackup backup = new SettingsBackup(installation.SettingsPath);
             backup.Create();
             Console.WriteLine("Settings: backed up");
 
             try
             {
-                // Здесь будут проходы бенчмарка.
+                foreach (BenchmarkProfile profile in profiles)
+                {
+                    backup.Restore();
+                    settingsFile.Apply(profile);
+                    Console.WriteLine($"Profile applied: {profile.Name} ({profile.Settings.Count} settings)");
+
+                    // Запуск, ожидание и результаты — следующие этапы.
+                }
             }
             finally
             {
-                // Выполняется при любом исходе: настройки пользователя возвращаются на место.
                 backup.Restore();
+                backup.Delete();
                 Console.WriteLine("Settings: restored");
             }
 
@@ -46,8 +64,6 @@ public sealed class RunCommand : Command<RunSettings>
             return ExitCodes.Failure;
         }
     }
-    
-    private const string NotAvailable = "n/a";
     
     private static void PrintPcInfo(PcInfo pc)
     {
