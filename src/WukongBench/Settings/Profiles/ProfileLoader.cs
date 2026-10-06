@@ -64,6 +64,17 @@ public sealed class ProfileLoader
 
             string key = line.Substring(0, separator).Trim();
             string value = line.Substring(separator + 1).Trim();
+
+            // Повтор ключа в секции — ошибка в профиле: непонятно, какое из значений нужно.
+            foreach (ProfileSetting existing in settings)
+            {
+                if (string.Equals(existing.Section, section, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(existing.Key, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new BenchmarkException($"Profile {name}: duplicate setting \"{key}\" in [{section}].");
+                }
+            }
+
             settings.Add(new ProfileSetting(section, key, value));
         }
 

@@ -17,7 +17,7 @@ public sealed class SettingsBackup(string settingsPath)
         
         if (!File.Exists(settingsPath))
         {
-            throw new BenchmarkException($"Settings file not found: {settingsPath}{Environment.NewLine}");
+            throw new BenchmarkException($"Settings file not found: {settingsPath}");
         }
 
         try

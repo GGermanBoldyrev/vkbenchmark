@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Spectre.Console.Cli;
 using WukongBench.Exceptions;
+using WukongBench.Output;
 using WukongBench.Pc;
 using WukongBench.Pc.Info;
 using WukongBench.Settings;
@@ -13,92 +14,62 @@ namespace WukongBench.Cli.Run;
 [Description("Runs Black Myth: Wukong Benchmark Tool several times with different settings and prints the results.")]
 public sealed class RunCommand : Command<RunSettings>
 {
-    private const string NotAvailable = "n/a";
-    
     private static readonly string DefaultProfilesDir = Path.Combine("Settings", "Profiles", "Default");
 
     public override int Execute(CommandContext context, RunSettings settings, CancellationToken cancellationToken)
     {
+        ProgressLog log = new ProgressLog();
+
         try
         {
             BenchmarkToolInstallation installation = new BenchmarkToolLocator().Find(settings.ToolDir);
-            Console.WriteLine($"Benchmark tool: {installation.InstallDir}");
-            Console.WriteLine($"Settings file:  {installation.SettingsPath}");
+            log.Step("Benchmark Tool found");
 
             PcInfo pc = new PcInfoCollector().Collect();
-            PrintPcInfo(pc);
+            log.Step("PC info collected");
 
             string profilesDir = settings.ProfilesDir
                 ?? Path.Combine(AppContext.BaseDirectory, DefaultProfilesDir);
             IReadOnlyList<BenchmarkProfile> profiles = new ProfileLoader().LoadAll(profilesDir);
-            Console.WriteLine($"Profiles: {string.Join(", ", profiles.Select(profile => profile.Name))}");
+            log.Step($"Profiles loaded: {profiles.Count}");
 
             SettingsFile settingsFile = new SettingsFile(installation.SettingsPath);
             SettingsBackup backup = new SettingsBackup(installation.SettingsPath);
             backup.Create();
-            Console.WriteLine("Settings: backed up");
+            log.Step("Settings backed up");
+
+            List<PassResult> passes = new List<PassResult>();
 
             try
             {
-                foreach (BenchmarkProfile profile in profiles)
+                for (int index = 0; index < profiles.Count; index++)
                 {
+                    BenchmarkProfile profile = profiles[index];
+                    log.Step($"Pass {index + 1} of {profiles.Count}: {profile.Name}");
+
                     backup.Restore();
                     settingsFile.Apply(profile);
-                    Console.WriteLine($"Profile applied: {profile.Name} ({profile.Settings.Count} settings)");
+                    log.Detail("settings applied");
 
                     // Запуск, ожидание и результаты — следующие этапы.
+                    passes.Add(new PassResult(profile, PassStatus.NotRun));
                 }
             }
             finally
             {
                 backup.Restore();
                 backup.Delete();
-                Console.WriteLine("Settings: restored");
+                log.Step("Settings restored");
             }
+
+            new ReportWriter().Write(new Report(pc, installation, passes));
 
             return ExitCodes.Success;
         }
         catch (BenchmarkException exception)
         {
-            Console.Error.WriteLine(exception.Message);
+            log.Error(exception.Message);
             return ExitCodes.Failure;
         }
-    }
-    
-    private static void PrintPcInfo(PcInfo pc)
-    {
-        Console.WriteLine(
-            $"CPU: {Format(pc.Cpu.Name)}, cores: {Format(pc.Cpu.Cores)}, threads: {Format(pc.Cpu.Threads)}");
-
-        Console.WriteLine(
-            $"GPU: {Format(pc.Gpu.Name)}, VRAM: {FormatMemory(pc.Gpu.VramMb)}, driver: {Format(pc.Gpu.DriverVersion)}");
-
-        Console.WriteLine($"RAM: {Format(pc.Ram.TotalGb, " GB")}");
-        Console.WriteLine($"OS:  {Format(pc.Os.Name)}, build: {Format(pc.Os.Build)}");
-    }
-    
-    private static string Format(object? value, string unit = "")
-    {
-        if (value is null)
-        {
-            return NotAvailable;
-        }
-
-        return $"{value}{unit}";
-    }
-
-    private static string FormatMemory(int? megabytes)
-    {
-        if (megabytes is null)
-        {
-            return NotAvailable;
-        }
-
-        if (megabytes < 1024)
-        {
-            return $"{megabytes} MB";
-        }
-
-        return $"{Math.Round(megabytes.Value / 1024.0)} GB";
     }
 }
