@@ -1,4 +1,5 @@
 using Spectre.Console.Cli;
+
 using WukongBench.Cli.Run;
 
 namespace WukongBench;

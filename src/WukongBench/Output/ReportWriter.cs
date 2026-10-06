@@ -1,4 +1,5 @@
 using Spectre.Console;
+
 using WukongBench.Pc.Info;
 using WukongBench.Settings.Profiles;
 
@@ -145,7 +146,7 @@ public sealed class ReportWriter
 
         return "[grey]not run[/]";
     }
-    
+
     private static string JoinKnown(params string?[] parts)
     {
         string? joined = JoinOrNull(", ", parts);

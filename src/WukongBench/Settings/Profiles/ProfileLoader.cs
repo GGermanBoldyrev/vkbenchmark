@@ -29,7 +29,7 @@ public sealed class ProfileLoader
 
         return profiles;
     }
-    
+
     private static BenchmarkProfile Load(string file)
     {
         string name = Path.GetFileNameWithoutExtension(file);

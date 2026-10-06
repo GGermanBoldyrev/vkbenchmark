@@ -6,7 +6,7 @@ namespace WukongBench.Settings;
 public sealed class SettingsBackup(string settingsPath)
 {
     private readonly string backupPath = settingsPath + ".wukongbench-backup";
-    
+
     public void Create()
     {
         // Копия уже есть: прошлый запуск не дошёл до конца, и в ней настоящие настройки.
@@ -14,7 +14,7 @@ public sealed class SettingsBackup(string settingsPath)
         {
             return;
         }
-        
+
         if (!File.Exists(settingsPath))
         {
             throw new BenchmarkException($"Settings file not found: {settingsPath}");
@@ -29,7 +29,7 @@ public sealed class SettingsBackup(string settingsPath)
             throw new BenchmarkException($"Cannot back up the settings file {settingsPath}: {exception.Message}");
         }
     }
-    
+
     public void Restore()
     {
         try
@@ -48,7 +48,7 @@ public sealed class SettingsBackup(string settingsPath)
                 $"The original settings are kept in {backupPath}");
         }
     }
-    
+
     public void Delete()
     {
         try

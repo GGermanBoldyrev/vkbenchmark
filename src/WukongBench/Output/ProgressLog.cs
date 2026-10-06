@@ -1,4 +1,5 @@
 using System.Diagnostics;
+
 using Spectre.Console;
 
 namespace WukongBench.Output;
@@ -8,7 +9,7 @@ namespace WukongBench.Output;
 public sealed class ProgressLog
 {
     private readonly Stopwatch stopwatch = Stopwatch.StartNew();
-    
+
     private readonly IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
     {
         Out = new AnsiConsoleOutput(Console.Error),
@@ -19,17 +20,17 @@ public sealed class ProgressLog
     {
         console.MarkupLine($"{Timestamp()} {Markup.Escape(message)}");
     }
-    
+
     public void Detail(string message)
     {
         console.MarkupLine($"{Timestamp()}   {Markup.Escape(message)}");
     }
-    
+
     public void Error(string message)
     {
         console.MarkupLine($"[red]{Markup.Escape(message)}[/]");
     }
-    
+
     private string Timestamp()
     {
         TimeSpan elapsed = stopwatch.Elapsed;

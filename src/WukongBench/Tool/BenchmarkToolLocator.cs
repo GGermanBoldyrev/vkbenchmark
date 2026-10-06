@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
+
 using Microsoft.Win32;
+
 using WukongBench.Exceptions;
 
 namespace WukongBench.Tool;
@@ -8,14 +10,14 @@ namespace WukongBench.Tool;
 public sealed class BenchmarkToolLocator
 {
     private const string DefaultSteamDir = @"C:\Program Files (x86)\Steam";
-    
+
     public BenchmarkToolInstallation Find(string? toolDir = null)
     {
         string installDir = toolDir ?? FindInstallDirViaSteam();
 
         return ToInstallation(installDir);
     }
-    
+
     private string FindInstallDirViaSteam()
     {
         string steamDir = FindSteamDir();
@@ -29,7 +31,7 @@ public sealed class BenchmarkToolLocator
 
         return installDir;
     }
-    
+
     private static string FindSteamDir()
     {
         // Steam записывает свою папку в реестр: для пользователя и для всей машины.
@@ -55,7 +57,7 @@ public sealed class BenchmarkToolLocator
 
         throw new BenchmarkException("Steam installation not found.");
     }
-    
+
     public string? FindInSteam(string steamDir)
     {
         foreach (string library in ReadLibraries(steamDir))

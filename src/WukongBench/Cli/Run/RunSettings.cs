@@ -1,5 +1,7 @@
 using System.ComponentModel;
+
 using Spectre.Console.Cli;
+
 using WukongBench.Cli.Validation;
 
 namespace WukongBench.Cli.Run;

@@ -1,5 +1,7 @@
 using System.Management;
+
 using Vortice.DXGI;
+
 using WukongBench.Pc.Info;
 
 namespace WukongBench.Pc;
@@ -68,7 +70,7 @@ public sealed class PcInfoCollector
             return new GpuInfo(Name: null, VramMb: null, DriverVersion: null);
         }
     }
-    
+
     // Версии драйвера в DXGI нет, поэтому берём её из WMI. Карту находим по кодам
     // производителя и модели: они есть в обоих источниках и не зависят от написания названия.
     private static string? FindDriverVersion(uint vendorId, uint deviceId)
