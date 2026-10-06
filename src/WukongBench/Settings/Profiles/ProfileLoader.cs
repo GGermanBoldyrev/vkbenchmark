@@ -3,7 +3,7 @@ using WukongBench.Exceptions;
 namespace WukongBench.Settings.Profiles;
 
 // Читает профили из папки. Каждый .ini в ней — один проход бенчмарка.
-public sealed class ProfileLoader
+internal sealed class ProfileLoader
 {
     private const string ProfileExtension = ".ini";
 

@@ -6,7 +6,7 @@ using WukongBench.Settings.Profiles;
 namespace WukongBench.Output;
 
 // Итоговый отчёт из трёх таблиц: система, результаты, настройки.
-public sealed class ReportWriter
+internal sealed class ReportWriter
 {
     // Значение не удалось определить.
     private const string NotAvailable = "n/a";

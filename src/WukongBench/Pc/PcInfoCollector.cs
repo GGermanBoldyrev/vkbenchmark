@@ -7,7 +7,7 @@ using WukongBench.Pc.Info;
 namespace WukongBench.Pc;
 
 // Собирает характеристики компьютера.
-public sealed class PcInfoCollector
+internal sealed class PcInfoCollector
 {
     private const long BytesInMegabyte = 1024 * 1024;
 

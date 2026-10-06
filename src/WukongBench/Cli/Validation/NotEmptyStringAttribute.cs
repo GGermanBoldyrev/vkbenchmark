@@ -5,7 +5,7 @@ using Spectre.Console.Cli;
 
 namespace WukongBench.Cli.Validation;
 
-public sealed class NotEmptyStringAttribute : ParameterValidationAttribute
+internal sealed class NotEmptyStringAttribute : ParameterValidationAttribute
 {
     public NotEmptyStringAttribute() : base(string.Empty)
     {

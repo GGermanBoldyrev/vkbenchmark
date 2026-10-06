@@ -1,6 +1,6 @@
 namespace WukongBench.Output;
 
-public enum PassStatus
+internal enum PassStatus
 {
     NotRun,
     Completed,

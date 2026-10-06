@@ -1,3 +1,3 @@
 namespace WukongBench.Pc.Info;
 
-public sealed record GpuInfo(string? Name, int? VramMb, string? DriverVersion);
+internal sealed record GpuInfo(string? Name, int? VramMb, string? DriverVersion);

@@ -14,7 +14,7 @@ namespace WukongBench.Cli.Run;
 
 // Единственная команда программы: то, что происходит при запуске.
 [Description("Runs Black Myth: Wukong Benchmark Tool several times with different settings and prints the results.")]
-public sealed class RunCommand : Command<RunSettings>
+internal sealed class RunCommand : Command<RunSettings>
 {
     private static readonly string DefaultProfilesDir = Path.Combine("Settings", "Profiles", "Default");
 

@@ -1,7 +1,7 @@
 namespace WukongBench.Tool;
 
 // Где утилита лежит на этой машине. Всё остальное выводится из папки установки.
-public sealed record BenchmarkToolInstallation(string InstallDir)
+internal sealed record BenchmarkToolInstallation(string InstallDir)
 {
     public string SettingsPath
     {

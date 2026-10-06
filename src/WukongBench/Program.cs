@@ -4,9 +4,9 @@ using WukongBench.Cli.Run;
 
 namespace WukongBench;
 
-public static class Program
+internal static class Program
 {
-    public static int Main(string[] args)
+    private static int Main(string[] args)
     {
         CommandApp<RunCommand> app = new CommandApp<RunCommand>();
 

@@ -7,7 +7,7 @@ using WukongBench.Exceptions;
 namespace WukongBench.Tool;
 
 // Отвечает на один вопрос: где на этой машине установлен Benchmark Tool.
-public sealed class BenchmarkToolLocator
+internal sealed class BenchmarkToolLocator
 {
     private const string DefaultSteamDir = @"C:\Program Files (x86)\Steam";
 

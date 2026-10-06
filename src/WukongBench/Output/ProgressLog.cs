@@ -6,7 +6,7 @@ namespace WukongBench.Output;
 
 // Ход работы: что программа делает сейчас, со временем от старта.
 // Пишется в поток ошибок, чтобы в стандартном выводе оставался только отчёт.
-public sealed class ProgressLog
+internal sealed class ProgressLog
 {
     private readonly Stopwatch stopwatch = Stopwatch.StartNew();
 

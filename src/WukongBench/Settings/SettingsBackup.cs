@@ -3,8 +3,10 @@ using WukongBench.Exceptions;
 namespace WukongBench.Settings;
 
 // Резервная копия файла настроек игры: сохранить до наших правок, возвращать перед каждым проходом и в конце.
-public sealed class SettingsBackup(string settingsPath)
+internal sealed class SettingsBackup(string settingsPath)
 {
+    // Параметр конструктора можно перезаписать, поле readonly — нельзя.
+    private readonly string settingsPath = settingsPath;
     private readonly string backupPath = settingsPath + ".wukongbench-backup";
 
     public void Create()

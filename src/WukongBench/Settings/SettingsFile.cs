@@ -6,9 +6,12 @@ using WukongBench.Settings.Profiles;
 namespace WukongBench.Settings;
 
 // Файл настроек игры: умеет принять профиль, не трогая остальное содержимое.
-public sealed class SettingsFile(string path)
+internal sealed class SettingsFile(string path)
 {
     private const string WindowsNewLine = "\r\n";
+
+    // Параметр конструктора можно перезаписать, поле readonly — нельзя.
+    private readonly string path = path;
 
     public void Apply(BenchmarkProfile profile)
     {

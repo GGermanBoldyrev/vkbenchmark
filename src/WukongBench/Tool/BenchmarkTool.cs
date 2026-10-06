@@ -1,7 +1,7 @@
 namespace WukongBench.Tool;
 
 // Что известно об утилите заранее и одинаково на любой машине.
-public static class BenchmarkTool
+internal static class BenchmarkTool
 {
     public const string AppId = "3132990";
 

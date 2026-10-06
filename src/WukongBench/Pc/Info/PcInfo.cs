@@ -1,6 +1,6 @@
 namespace WukongBench.Pc.Info;
 
-public sealed record PcInfo(
+internal sealed record PcInfo(
     CpuInfo Cpu,
     GpuInfo Gpu,
     RamInfo Ram,
