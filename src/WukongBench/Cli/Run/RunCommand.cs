@@ -3,6 +3,7 @@ using Spectre.Console.Cli;
 using WukongBench.Exceptions;
 using WukongBench.Pc;
 using WukongBench.Pc.Info;
+using WukongBench.Settings;
 using WukongBench.Tool;
 
 namespace WukongBench.Cli.Run;
@@ -22,8 +23,20 @@ public sealed class RunCommand : Command<RunSettings>
             PcInfo pc = new PcInfoCollector().Collect();
             PrintPcInfo(pc);
 
-            string backupPath = BackupSettings(installation.SettingsPath);
-            Console.WriteLine($"Settings backup: {backupPath}");
+            SettingsBackup backup = new SettingsBackup(installation.SettingsPath);
+            backup.Create();
+            Console.WriteLine("Settings: backed up");
+
+            try
+            {
+                // Здесь будут проходы бенчмарка.
+            }
+            finally
+            {
+                // Выполняется при любом исходе: настройки пользователя возвращаются на место.
+                backup.Restore();
+                Console.WriteLine("Settings: restored");
+            }
 
             return ExitCodes.Success;
         }
@@ -71,11 +84,5 @@ public sealed class RunCommand : Command<RunSettings>
         }
 
         return $"{Math.Round(megabytes.Value / 1024.0)} GB";
-    }
-
-    // Мок: файл не копируется, возвращается только путь будущей копии.
-    private static string BackupSettings(string settingsPath)
-    {
-        return settingsPath + ".bak";
     }
 }
