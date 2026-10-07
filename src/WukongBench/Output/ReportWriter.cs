@@ -1,24 +1,28 @@
+using System.Globalization;
+
 using Spectre.Console;
 
 using WukongBench.Pc.Info;
+using WukongBench.Results;
 using WukongBench.Settings.Profiles;
 
 namespace WukongBench.Output;
 
-// Итоговый отчёт из трёх таблиц: система, результаты, настройки.
+// Итоговый отчёт: система, результаты, настройки профилей и настройки по данным утилиты.
 internal sealed class ReportWriter
 {
     // Значение не удалось определить.
     private const string NotAvailable = "n/a";
 
-    // Профиль эту настройку не задаёт.
-    private const string NotSet = "—";
+    // Значения нет: профиль настройку не задаёт или проход не дал результата.
+    private const string NoValue = "—";
 
     public void Write(Report report)
     {
         WriteSystem(report);
         WriteResults(report.Passes);
-        WriteSettings(report.Passes);
+        WriteProfileSettings(report.Passes);
+        WriteReportedSettings(report.Passes);
     }
 
     private static void WriteSystem(Report report)
@@ -45,19 +49,21 @@ internal sealed class ReportWriter
         Table table = NewTable();
         AddPassColumns(table, passes);
 
-        List<string> statusRow = new List<string> { "Status" };
-        foreach (PassResult pass in passes)
-        {
-            statusRow.Add(FormatStatus(pass.Status));
-        }
-
-        table.AddRow(statusRow.ToArray());
+        AddPassRow(table, passes, "Status", pass => FormatStatus(pass.Status));
+        AddPassRow(table, passes, "Average FPS", pass => FormatNumber(pass.Result?.FpsAverage));
+        AddPassRow(table, passes, "Maximum FPS", pass => FormatNumber(pass.Result?.FpsMax));
+        AddPassRow(table, passes, "Minimum FPS", pass => FormatNumber(pass.Result?.FpsMin));
+        AddPassRow(table, passes, "5th percentile FPS", pass => FormatNumber(pass.Result?.FpsPercentile5));
+        AddPassRow(table, passes, "CPU frame time, ms", pass => FormatNumber(pass.Result?.CpuFrameTimeMs));
+        AddPassRow(table, passes, "GPU frame time, ms", pass => FormatNumber(pass.Result?.GpuFrameTimeMs));
+        AddPassRow(table, passes, "Video memory used, GB", pass => FormatNumber(pass.Result?.VideoMemoryGb));
+        AddPassRow(table, passes, "Duration, s", pass => FormatNumber(pass.Result?.DurationSeconds));
 
         WriteTable("RESULTS", table);
     }
 
     // Строки — объединение настроек всех профилей в порядке их появления.
-    private static void WriteSettings(IReadOnlyList<PassResult> passes)
+    private static void WriteProfileSettings(IReadOnlyList<PassResult> passes)
     {
         Table table = NewTable();
         AddPassColumns(table, passes);
@@ -82,7 +88,7 @@ internal sealed class ReportWriter
                 ProfileSetting? setting = pass.Profile.Settings.FirstOrDefault(item => IsSameSetting(item, row));
                 if (setting is null)
                 {
-                    cells.Add(NotSet);
+                    cells.Add(NoValue);
                 }
                 else
                 {
@@ -93,7 +99,71 @@ internal sealed class ReportWriter
             table.AddRow(cells.ToArray());
         }
 
-        WriteTable("SETTINGS", table);
+        WriteTable("PROFILE SETTINGS", table);
+    }
+
+    // Что о проходе записала сама утилита: видно, какие настройки профиля она приняла.
+    private static void WriteReportedSettings(IReadOnlyList<PassResult> passes)
+    {
+        List<string> names = new List<string>();
+        foreach (PassResult pass in passes)
+        {
+            if (pass.Result is null)
+            {
+                continue;
+            }
+
+            foreach (ReportedSetting setting in pass.Result.Settings)
+            {
+                if (!names.Contains(setting.Name))
+                {
+                    names.Add(setting.Name);
+                }
+            }
+        }
+
+        // Ни один проход не дал результата: показывать нечего.
+        if (names.Count == 0)
+        {
+            return;
+        }
+
+        Table table = NewTable();
+        AddPassColumns(table, passes);
+
+        foreach (string name in names)
+        {
+            AddPassRow(table, passes, name, pass => FindReportedValue(pass, name));
+        }
+
+        WriteTable("SETTINGS REPORTED BY BENCHMARK TOOL", table);
+    }
+
+    private static string? FindReportedValue(PassResult pass, string name)
+    {
+        ReportedSetting? setting = pass.Result?.Settings.FirstOrDefault(item => item.Name == name);
+        if (setting is null)
+        {
+            return null;
+        }
+
+        return Markup.Escape(setting.Value);
+    }
+
+    // Строка таблицы: подпись и по ячейке на проход.
+    private static void AddPassRow(
+        Table table,
+        IReadOnlyList<PassResult> passes,
+        string label,
+        Func<PassResult, string?> cell)
+    {
+        List<string> cells = new List<string> { Markup.Escape(label) };
+        foreach (PassResult pass in passes)
+        {
+            cells.Add(cell(pass) ?? NoValue);
+        }
+
+        table.AddRow(cells.ToArray());
     }
 
     private static Table NewTable()
@@ -139,12 +209,18 @@ internal sealed class ReportWriter
             return "[green]OK[/]";
         }
 
-        if (status == PassStatus.Failed)
-        {
-            return "[red]FAILED[/]";
-        }
+        return "[red]FAILED[/]";
+    }
 
-        return "[grey]not run[/]";
+    // Точка, а не запятая, на любом языке системы.
+    private static string? FormatNumber(int? value)
+    {
+        return value?.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static string? FormatNumber(double? value)
+    {
+        return value?.ToString("0.0", CultureInfo.InvariantCulture);
     }
 
     private static string JoinKnown(params string?[] parts)

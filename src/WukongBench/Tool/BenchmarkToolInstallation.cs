@@ -10,4 +10,12 @@ internal sealed record BenchmarkToolInstallation(string InstallDir)
             return Path.Combine(InstallDir, BenchmarkTool.SettingsRelativePath);
         }
     }
+
+    public string LauncherPath
+    {
+        get
+        {
+            return Path.Combine(InstallDir, BenchmarkTool.LauncherFileName);
+        }
+    }
 }

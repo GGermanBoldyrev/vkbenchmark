@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 using WukongBench.Exceptions;
 using WukongBench.Settings.Profiles;
@@ -10,10 +11,14 @@ internal sealed class SettingsFile(string path)
 {
     private const string WindowsNewLine = "\r\n";
 
+    // Строка со значениями меню утилиты. В профиле ей соответствует секция с тем же именем.
+    private const string MenuSettingsKey = "UISettingData";
+
     // Параметр конструктора можно перезаписать, поле readonly — нельзя.
     private readonly string path = path;
 
-    public void Apply(BenchmarkProfile profile)
+    // Возвращает профиль с теми значениями, которые попали в файл.
+    public BenchmarkProfile Apply(BenchmarkProfile profile)
     {
         try
         {
@@ -36,12 +41,17 @@ internal sealed class SettingsFile(string path)
                 lines.RemoveAt(lines.Count - 1);
             }
 
+            List<ProfileSetting> applied = new List<ProfileSetting>();
             foreach (ProfileSetting setting in profile.Settings)
             {
-                Set(lines, setting);
+                ProfileSetting resolved = setting with { Value = Resolve(lines, setting.Value) };
+                Set(lines, resolved);
+                applied.Add(resolved);
             }
 
             File.WriteAllText(path, string.Join(newLine, lines) + newLine, encoding);
+
+            return profile with { Settings = applied };
         }
         catch (Exception exception)
         {
@@ -50,9 +60,33 @@ internal sealed class SettingsFile(string path)
         }
     }
 
+    // Значение вида {Ключ} берём из самого файла: так профиль ссылается на разрешение экрана.
+    private static string Resolve(List<string> lines, string value)
+    {
+        if (!value.StartsWith('{') || !value.EndsWith('}'))
+        {
+            return value;
+        }
+
+        string key = value.Substring(1, value.Length - 2).Trim();
+        string? line = lines.FirstOrDefault(item => IsKey(item, key));
+        if (line is null)
+        {
+            throw new InvalidOperationException($"the key \"{key}\" is missing.");
+        }
+
+        return line.Substring(line.IndexOf('=') + 1).Trim();
+    }
+
     // Ключ есть — заменяем строку. Ключа нет — добавляем в конец секции. Секции нет — дописываем её.
     private static void Set(List<string> lines, ProfileSetting setting)
     {
+        if (string.Equals(setting.Section, MenuSettingsKey, StringComparison.OrdinalIgnoreCase))
+        {
+            SetMenuSetting(lines, setting);
+            return;
+        }
+
         string settingLine = $"{setting.Key}={setting.Value}";
 
         int sectionStart = lines.FindIndex(line => IsSection(line, setting.Section));
@@ -89,6 +123,24 @@ internal sealed class SettingsFile(string path)
         }
 
         lines.Insert(insertAt, settingLine);
+    }
+
+    // Значения меню лежат одной строкой: UISettingData=(("Имя", "значение"),...).
+    private static void SetMenuSetting(List<string> lines, ProfileSetting setting)
+    {
+        int index = lines.FindIndex(line => IsKey(line, MenuSettingsKey));
+        if (index < 0)
+        {
+            throw new InvalidOperationException($"the {MenuSettingsKey} line is missing.");
+        }
+
+        Regex pair = new Regex($"""\("{Regex.Escape(setting.Key)}",\s*"[^"]*"\)""");
+        if (!pair.IsMatch(lines[index]))
+        {
+            throw new InvalidOperationException($"{MenuSettingsKey} has no setting \"{setting.Key}\".");
+        }
+
+        lines[index] = pair.Replace(lines[index], match => $"""("{setting.Key}", "{setting.Value}")""");
     }
 
     // Unreal не различает регистр в именах секций и ключей.

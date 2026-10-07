@@ -56,7 +56,8 @@ internal sealed class PcInfoCollector
                         return new GpuInfo(Name: null, VramMb: null, DriverVersion: null);
                     }
 
-                    long vramBytes = (long)description.DedicatedVideoMemory;
+                    // Именно ulong: в uint не помещаются 4 ГБ и больше.
+                    ulong vramBytes = (ulong)description.DedicatedVideoMemory;
 
                     return new GpuInfo(
                         Name: description.Description,
